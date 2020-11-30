@@ -101,6 +101,7 @@ class serial extends EventEmitter {
 
 		return new Promise((resolve, reject) => {
 			data = determineData(data);
+
 			self.port.write(data, encoding, error => {
 				if(error){
 					if(self.debug){
@@ -108,10 +109,13 @@ class serial extends EventEmitter {
 					}
 
 					self.emit('error', error);
+
 					resolve(false);
 					return;
 				}
+			});
 
+			self.port.drain(() => {
 				if(self.debug == 'verbose' || self.debug == 2){
 					console.log('serial write data: ', data);
 				}
