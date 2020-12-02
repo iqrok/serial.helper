@@ -102,6 +102,7 @@ class serial extends EventEmitter {
 		return new Promise((resolve, reject) => {
 			data = determineData(data);
 
+			// write data to serial port
 			self.port.write(data, encoding, error => {
 				if(error){
 					if(self.debug){
@@ -109,12 +110,11 @@ class serial extends EventEmitter {
 					}
 
 					self.emit('error', error);
-
 					resolve(false);
 					return;
 				}
 			});
-
+			// wait until serial to finish transmitting to the target serial port
 			self.port.drain(() => {
 				if(self.debug == 'verbose' || self.debug == 2){
 					console.log('serial write data: ', data);
@@ -174,44 +174,7 @@ class serial extends EventEmitter {
 			self.emit('open', 'Connected to:' + self.conf.port + ' baudrate:' + self.conf.baud + 'bps');
 		});
 
-		if(self.conf.parser && self.conf.parser.type === 'InterByteTimeout'){
-			const interval = self.conf.parser && self.conf.parser.interval ? self.conf.parser.interval : 30;
-			const _InterByteTimeout = self.port.pipe(new InterByteTimeout({interval}));
-
-			_InterByteTimeout.on('data', received => {
-				self.emit('data', received);
-			});
-		} else{
-			const delimiter = self.conf.parser && self.conf.parser.delimiter ? self.conf.parser.delimiter : '\n';
-			const lineStream = self.port.pipe(new Readline(delimiter));
-
-			lineStream.on('data', data => {
-				let response = {};
-
-				// remove trailing whitespace
-				data = data.trim();
-
-				try {
-					response = {
-							status : true,
-							data : JSON.parse(data),
-						};
-				}
-				catch (err) {
-					response = {
-						status : true,
-						data : data,
-						ascii : Buffer.from(data),
-					}
-				}
-
-				// only emit data if it's not empty or if it's an integer (cos 0 means false too)
-				/** somehow '' means false in JS **/
-				if(response.data || Number.isInteger(response.data)){
-					self.emit('data',response);
-				}
-			});
-		}
+		self.registerDataListener();
 	};
 
 	/**
@@ -257,6 +220,137 @@ class serial extends EventEmitter {
 			self._registerListeners();
 		});
 	}
+
+	/**
+	 *	Register Data Parser Listener & Emitter
+	 */
+	registerDataListener(){
+		const self = this;
+
+		if(self.conf.parser && self.conf.parser.type === 'InterByteTimeout'){
+			if(self._parser == undefined){
+				const interval = self.conf.parser && self.conf.parser.interval ? self.conf.parser.interval : 30;
+				self._parser = self.port.pipe(new InterByteTimeout({interval}));
+			}
+
+			self._parser.on('data', received => {
+				self.emit('data', received);
+			});
+		} else{
+			if(self._parser == undefined){
+				const delimiter = self.conf.parser && self.conf.parser.delimiter ? self.conf.parser.delimiter : '\n';
+				self._parser = self.port.pipe(new Readline(delimiter));
+			}
+
+			self._parser.on('data', data => {
+				let response = {};
+
+				// remove trailing whitespace
+				data = data.trim();
+
+				try {
+					response = {
+							status : true,
+							data : JSON.parse(data),
+						};
+				}
+				catch (err) {
+					response = {
+						status : true,
+						data : data,
+						ascii : Buffer.from(data),
+					}
+				}
+
+				// only emit data if it's not empty or if it's an integer (cos 0 means false too)
+				/** somehow '' means false in JS **/
+				if(response.data || Number.isInteger(response.data)){
+					self.emit('data',response);
+				}
+			});
+		}
+	}
+
+	/**
+	 *	Remove Data Parser Listener & Emitter
+	 */
+	removeDataListener(){
+		const self = this;
+
+		if(self._parser != undefined && self._parser.listenerCount('data') > 0){
+			self._parser.removeAllListeners('data');
+		}
+	};
+
+	/**
+	 *	request data to serial port by sending specific commands and wait for the response
+	 *	@param {string|number|number[]} data - data to write
+	 *	@param {string} [encoding='utf8'] - data will be encoded according to this encoding
+	 *	@resturn {Promise} - will resolve until data is received
+	 */
+	request(data, encoding = 'utf8'){
+		const self = this;
+		self.removeDataListener();
+		return new Promise((resolve, reject) => {
+			data = determineData(data);
+
+			// write data to serial port
+			self.port.write(data, encoding, error => {
+				if(error){
+					if(self.debug){
+						console.error('serial write error : ', error);
+					}
+
+					self.emit('error', error);
+					reject(false);
+					return;
+				}
+			});
+
+			if(self.conf.parser && self.conf.parser.type === 'InterByteTimeout'){
+				if(self._parser == undefined){
+					const interval = self.conf.parser && self.conf.parser.interval ? self.conf.parser.interval : 30;
+					self._parser = self.port.pipe(new InterByteTimeout({interval}));
+				}
+
+				self._parser.once('data', received => {
+					resolve(received);
+				});
+			} else {
+				if(self._parser == undefined){
+					const delimiter = self.conf.parser && self.conf.parser.delimiter ? self.conf.parser.delimiter : '\n';
+					self._parser = self.port.pipe(new Readline(delimiter));
+				}
+
+				self._parser.once('data', data => {
+					let response = {};
+
+					// remove trailing whitespace
+					data = data.trim();
+
+					try {
+						response = {
+								status : true,
+								data : JSON.parse(data),
+							};
+					}
+					catch (err) {
+						response = {
+							status : true,
+							data : data,
+							ascii : Buffer.from(data),
+						}
+					}
+
+					// only emit data if it's not empty or if it's an integer (cos 0 means false too)
+					/** somehow '' means false in JS **/
+					if(response.data || Number.isInteger(response.data)){
+						resolve(response);
+					}
+				});
+			}
+		});
+	};
 }
 
 module.exports = serial;
