@@ -302,7 +302,7 @@ class serial extends EventEmitter {
 					}
 
 					self.emit('error', error);
-					reject(false);
+					resolve(false);
 					return;
 				}
 			});
