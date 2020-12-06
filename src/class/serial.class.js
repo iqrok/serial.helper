@@ -124,10 +124,8 @@ class serial extends EventEmitter {
 		const self = this;
 
 		return new Promise((resolve, reject) => {
-			data = _toBuffer(data);
-
 			// write data to serial port
-			self.port.write(data, encoding, error => {
+			self.port.write(_toBuffer(data), encoding, error => {
 				if(error){
 					if(self.debug){
 						console.error('serial write error : ', error);
@@ -138,10 +136,11 @@ class serial extends EventEmitter {
 					return;
 				}
 			});
+
 			// wait until serial to finish transmitting to the target serial port
 			self.port.drain(() => {
 				if(self.debug == 'verbose' || self.debug == 2){
-					console.log('serial write data: ', data);
+					console.log('serial write data: ', data, _toBuffer(data));
 				}
 
 				resolve(true);
@@ -248,6 +247,7 @@ class serial extends EventEmitter {
 
 	/**
 	 * Register Data Parser Listener & Emitter
+	 * @param {boolean} addEmitter - add global emitter or not
 	 */
 	registerDataListener(addEmitter = true){
 		const self = this;
@@ -306,10 +306,8 @@ class serial extends EventEmitter {
 		self.removeDataListener();
 
 		return new Promise((resolve, reject) => {
-			data = _toBuffer(data);
-
 			// write data to serial port
-			self.port.write(data, encoding, error => {
+			self.port.write(_toBuffer(data), encoding, error => {
 				if(error){
 					if(self.debug){
 						console.error('serial request error : ', error);
