@@ -253,10 +253,8 @@ class serial extends EventEmitter {
 		const self = this;
 
 		if(self.conf.parser && self.conf.parser.type === 'InterByteTimeout'){
-			if(self._parser == undefined){
-				const interval = self.conf.parser && self.conf.parser.interval ? self.conf.parser.interval : 30;
-				self._parser = self.port.pipe(new InterByteTimeout({interval}));
-			}
+			const interval = self.conf.parser && self.conf.parser.interval ? self.conf.parser.interval : 30;
+			self._parser = self.port.pipe(new InterByteTimeout({interval}));
 
 			if(addEmitter){
 				self._parser.on('data', received => {
@@ -264,10 +262,8 @@ class serial extends EventEmitter {
 				});
 			}
 		} else{
-			if(self._parser == undefined){
-				const delimiter = self.conf.parser && self.conf.parser.delimiter ? self.conf.parser.delimiter : '\n';
-				self._parser = self.port.pipe(new Readline(delimiter));
-			}
+			const delimiter = self.conf.parser && self.conf.parser.delimiter ? self.conf.parser.delimiter : '\n';
+			self._parser = self.port.pipe(new Readline(delimiter));
 
 			if(addEmitter){
 				self._parser.on('data', data => {
