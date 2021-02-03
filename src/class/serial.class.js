@@ -315,6 +315,11 @@ class serial extends EventEmitter {
 				}
 			});
 
+			// re-register parser if it's got removed by other process
+			if(!self._parser){
+				self.registerDataListener(false);
+			}
+
 			// wait for response to resolve promise
 			if(self.conf.parser && self.conf.parser.type === 'InterByteTimeout'){
 				self._parser.once('data', received => {
