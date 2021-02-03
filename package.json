@@ -1,6 +1,6 @@
 {
   "name": "@iqrok/serial.helper",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Helper for serialport package in async/await",
   "main": "src/class/serial.class.js",
   "scripts": {
