@@ -12,6 +12,7 @@ const EventEmitter = require('events');
  * @return {Buffer}
  */
 function _toBuffer(data){
+	console.log(data);
 	if(Buffer.isBuffer(data)){
 		return data;
 	}
@@ -84,6 +85,14 @@ class serial extends EventEmitter {
 		if(self.conf.autoopen){
 			this.connect();
 		}
+	};
+
+	/**
+	 * static method as an alias to SerialPort.list()
+	 * @return {Promise} - resolve to array of available ports
+	 */
+	static list(){
+		return SerialPort.list();
 	};
 
 	/**
@@ -295,13 +304,21 @@ class serial extends EventEmitter {
 	 * @param {string} [encoding='utf8'] - data will be encoded according to this encoding
 	 * @return {Promise} - will resolve until data is received
 	 */
-	request(data, encoding = 'utf8'){
+	request(data, timeout = 1000, encoding = 'utf8'){
 		const self = this;
 
-		self.registerDataListener(false);
-		self.removeDataListener();
-
 		return new Promise((resolve, reject) => {
+			const cb = received => {
+					clearTimeout(interrupt);
+					resolve(received);
+					self._parser.removeListener('data', cb);
+				};
+
+			const interrupt = setTimeout(() => {
+					self._parser.removeListener('data', cb);
+					resolve(null)
+				}, timeout);
+
 			// write data to serial port
 			self.port.write(_toBuffer(data), encoding, error => {
 				if(error){
@@ -315,18 +332,12 @@ class serial extends EventEmitter {
 				}
 			});
 
-			// re-register parser if it's got removed by other process
-			if(!self._parser){
-				self.registerDataListener(false);
-			}
-
 			// wait for response to resolve promise
 			if(self.conf.parser && self.conf.parser.type === 'InterByteTimeout'){
-				self._parser.once('data', received => {
-					resolve(received);
-				});
+				self._parser.once('data', cb);
 			} else {
 				self._parser.once('data', data => {
+					clearTimeout(interrupt);
 					resolve(_handleStringResponse(data));
 				});
 			}
