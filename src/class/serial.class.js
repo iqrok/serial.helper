@@ -12,7 +12,6 @@ const EventEmitter = require('events');
  * @return {Buffer}
  */
 function _toBuffer(data){
-	console.log(data);
 	if(Buffer.isBuffer(data)){
 		return data;
 	}
@@ -68,6 +67,9 @@ class serial extends EventEmitter {
 	 * @param {boolean} [config.autoreconnect=true] - Autoreconnect on lost connection
 	 * @param {boolean} [config.autoopen=true] - Auto open port on creating class
 	 * @param {number} [config.reconnectInterval=3000] - Interval in ms for reconnecting if autoreconnect is true
+	 * @param {Object} [config.parser] - set parser, if left empty then readline is used to parse every message
+	 * @param {string} [config.parser.type] - parser type, possible value is InterByteTimeout
+	 * @param {number} [config.parser.interval] - interval between message to be considered as new data
 	 * @param {boolean} [debug=false] - Print debug message
 	 */
 	constructor(config, debug = false ) {
