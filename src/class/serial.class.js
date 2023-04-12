@@ -257,6 +257,20 @@ class serial extends EventEmitter {
 	};
 
 	/**
+	 * Disconnect and remove all listeners
+	 */
+	disconnect(){
+		const self = this;
+
+		self.port.close();
+		self.port.removeAllListeners('data');
+		self.port.removeAllListeners('close');
+		self.port.removeAllListeners('open');
+		self.port.removeAllListeners('error');
+		self.removeDataListener();
+	};
+
+	/**
 	 * Register Data Parser Listener & Emitter
 	 * @param {boolean} addEmitter - add global emitter or not
 	 */
