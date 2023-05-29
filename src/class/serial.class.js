@@ -1,6 +1,6 @@
-const SerialPort = require('serialport');
-const Readline = require('@serialport/parser-readline');
-const InterByteTimeout = require('@serialport/parser-inter-byte-timeout');
+const { SerialPort } = require('serialport');
+const Readline = require('@serialport/parser-readline').ReadlineParser;
+const InterByteTimeout = require('@serialport/parser-inter-byte-timeout').InterByteTimeoutParser;
 const EventEmitter = require('events');
 
 /**
@@ -106,7 +106,10 @@ class serial extends EventEmitter {
 
 		return new Promise(async (resolve, reject) => {
 			try{
-				const leonardo = new SerialPort(self.conf.port, {baudRate});
+				const leonardo = new SerialPort({
+						path: self.conf.port,
+						baudRate,
+					});
 
 				leonardo.on('error', async error => {
 					await sleep(100);
@@ -224,8 +227,10 @@ class serial extends EventEmitter {
 		}
 
 		return new Promise((resolve, reject) => {
-			self.port = new SerialPort(self.conf.port, {
-						baudRate: parseInt(self.conf.baud)
+			const _path =
+			self.port = new SerialPort({
+						path: self.conf.port,
+						baudRate: parseInt(self.conf.baud),
 					},
 					function (error) {
 						if(error) {
