@@ -234,9 +234,7 @@ class serial extends EventEmitter {
 					},
 					function (error) {
 						if(error) {
-							if(self.debug){
-								self.emit('error', error);
-							}
+							self.emit('error', error);
 
 							if(self.conf.autoreconnect === true){
 								setTimeout(()=>{
