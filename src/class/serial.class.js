@@ -260,11 +260,9 @@ class serial extends EventEmitter {
 	disconnect(){
 		const self = this;
 
-		self.port.close();
-		self.port.removeAllListeners('data');
-		self.port.removeAllListeners('close');
-		self.port.removeAllListeners('open');
-		self.port.removeAllListeners('error');
+		if(self.port.isOpen) self.port.close();
+
+		self.removePortListener();
 		self.removeDataListener();
 	};
 
@@ -309,6 +307,17 @@ class serial extends EventEmitter {
 
 		if(self._parser != undefined && self._parser.listenerCount('data') > 0){
 			self._parser.removeAllListeners('data');
+		}
+	};
+
+	/**
+	 * Remove All SerialPort Listeners
+	 */
+	removePortListener(){
+		const self = this;
+
+		for(const event in self.port._events){
+			self.port.removeAllListeners(event);
 		}
 	};
 
