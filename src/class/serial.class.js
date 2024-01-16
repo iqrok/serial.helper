@@ -1,6 +1,7 @@
 const SerialPort = require('serialport');
 const Readline = require('@serialport/parser-readline');
 const InterByteTimeout = require('@serialport/parser-inter-byte-timeout');
+const ByteLength = require('@serialport/parser-byte-length');
 const EventEmitter = require('events');
 
 /**
@@ -273,29 +274,60 @@ class serial extends EventEmitter {
 	registerDataListener(addEmitter = true){
 		const self = this;
 
-		if(self.conf.parser && self.conf.parser.type === 'InterByteTimeout'){
-			const interval = self.conf.parser && self.conf.parser.interval ? self.conf.parser.interval : 30;
-			self._parser = self.port.pipe(new InterByteTimeout({interval}));
+		const type = self.conf.parser && self.conf.parser.type;
 
-			if(addEmitter){
-				self._parser.on('data', received => {
-					self.emit('data', received);
-				});
-			}
-		} else{
-			const delimiter = self.conf.parser && self.conf.parser.delimiter ? self.conf.parser.delimiter : '\n';
-			self._parser = self.port.pipe(new Readline(delimiter));
+		switch(type){
+			case 'timeout':
+			case 'InterByteTimeout': {
+				const interval = self.conf.parser
+					&& self.conf.parser.interval
+						? self.conf.parser.interval
+						: 30;
 
-			if(addEmitter){
-				self._parser.on('data', data => {
-					const response = _handleStringResponse(data);
+				self._parser = self.port.pipe(new InterByteTimeout({ interval }));
 
-					// only emit data if it's not empty or if it's an integer
-					if(response.data || Number.isInteger(response.data)){
-						self.emit('data',response);
-					}
-				});
-			}
+				if(addEmitter){
+					self._parser.on('data', received => {
+						self.emit('data', received);
+					});
+				}
+			} break;
+
+			case 'byte':
+			case 'ByteLength': {
+				const length = self.conf.parser
+					&& self.conf.parser.length
+						? self.conf.parser.length
+						: 1;
+
+				self._parser = self.port.pipe(new ByteLength({ length }));
+
+				if(addEmitter){
+					self._parser.on('data', received => {
+						self.emit('data', received);
+					});
+				}
+			} break;
+
+			default: {
+				const delimiter = self.conf.parser
+					&& self.conf.parser.delimiter
+						? self.conf.parser.delimiter
+						: '\n';
+
+				self._parser = self.port.pipe(new Readline(delimiter));
+
+				if(addEmitter){
+					self._parser.on('data', data => {
+						const response = _handleStringResponse(data);
+
+						// only emit data if it's not empty or if it's an integer
+						if(response.data || Number.isInteger(response.data)){
+							self.emit('data',response);
+						}
+					});
+				}
+			} break;
 		}
 	};
 

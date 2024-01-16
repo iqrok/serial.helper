@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/iqrok/serial.helper#readme",
   "dependencies": {
+    "@serialport/parser-byte-length": "^9.0.1",
     "@serialport/parser-inter-byte-timeout": "^9.0.1",
     "serialport": "^9.0.2"
   }
