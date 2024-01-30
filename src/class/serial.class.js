@@ -137,19 +137,25 @@ class serial extends EventEmitter {
 
 		return new Promise((resolve, reject) => {
 			// write data to serial port
-			self.port.write(_toBuffer(data), encoding, error => {
-				if(error){
-					if(self.debug){
-						console.error('serial write error : ', error);
-					}
+			const status = self.port.write(_toBuffer(data), encoding, error => {
+				if(!error) return;
 
-					self.emit('error', error);
-					resolve(false);
-					return;
+				if(self.debug){
+					console.error('serial write error : ', error);
 				}
+
+				self.emit('error', error);
+				resolve(false);
+				return;
 			});
 
-			// wait until serial to finish transmitting to the target serial port
+			// no need to wait until port is drained
+			if(status) {
+				resolve(true);
+				return;
+			}
+
+			// resolve on drained
 			self.port.drain(() => {
 				if(self.debug == 'verbose' || self.debug == 2){
 					console.log('serial write data: ', data, _toBuffer(data));
