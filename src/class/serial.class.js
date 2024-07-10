@@ -82,12 +82,9 @@ class serial extends EventEmitter {
 		self.conf.autoopen = self.conf.autoopen == null ? true : self.conf.autoopen;
 		self.reconnectInterval = self.conf.reconnectInterval || 3000;
 		self.debug = self.conf.debug != null ? self.conf.debug : debug;
-
 		self.isOpen = false;
 
-		if(self.conf.autoopen){
-			this.connect();
-		}
+		if(self.conf.autoopen) self.connect();
 	};
 
 	/**
@@ -100,6 +97,7 @@ class serial extends EventEmitter {
 
 	/**
 	 * soft reset for arduino leonardo
+	 * @private
 	 * @param {boolean} [baudRate=1200] - baud rate for executing soft reset, should be 1200bps for leonardo
 	 */
 	_softReset(baudRate = 1200){
@@ -140,9 +138,7 @@ class serial extends EventEmitter {
 			const status = self.port.write(_toBuffer(data), encoding, error => {
 				if(!error) return;
 
-				if(self.debug){
-					console.error('serial write error : ', error);
-				}
+				if(self.debug) console.error('serial write error : ', error);
 
 				self.emit('error', error);
 				resolve(false);
@@ -188,23 +184,15 @@ class serial extends EventEmitter {
 
 	/**
 	 * Register all event listeners
+	 * @private
 	 */
 	_registerListeners(){
 		const self = this;
 
 		self.port.on('close', () => {
 			self.isOpen = false;
-
-			if(self.conf.autoreconnect === true){
-				setTimeout(async () => {
-						if(self.debug){
-							console.error(`Attempting to reconnect ${self.conf.port}[${self.conf.baud}bps]...`);
-						}
-						await self.connect();
-					}, self.reconnectInterval);
-			}
-
 			self.emit('close', self.conf.port + ' is closed');
+			if(self.conf.autoreconnect === true) self.connect();
 		});
 
 		self.port.on('error', error => {
@@ -213,7 +201,7 @@ class serial extends EventEmitter {
 
 		self.port.on('open', () => {
 			self.isOpen = true;
-			self.emit('open', 'Connected to:' + self.conf.port + ' baudrate:' + self.conf.baud + 'bps');
+			self.emit('open', `Connected to: ${self.conf.port} [${self.conf.baud}bps]`);
 		});
 
 		self.registerDataListener();
@@ -232,30 +220,27 @@ class serial extends EventEmitter {
 
 		return new Promise((resolve, reject) => {
 			self.port = new SerialPort(self.conf.port, {
-						baudRate: parseInt(self.conf.baud)
-					},
-					function (error) {
-						if(error) {
-							self.emit('error', error);
+					baudRate: parseInt(self.conf.baud)
+				},
+				function (error) {
+					if(error) {
+						self.emit('error', error);
 
-							if(self.conf.autoreconnect === true){
-								setTimeout(()=>{
-										if(self.debug){
-											console.error(`Attempting to reconnect ${self.conf.port}[${self.conf.baud}bps]...`);
-										}
+						if(self.conf.autoreconnect !== true) return reject(error);
 
-										resolve(self.connect());
-									}, self.reconnectInterval);
-							} else {
-								reject(error);
-							}
-							return;
+						if(self.debug){
+							console.error(`Attempting to reconnect ${self.conf.port} [${self.conf.baud}bps]...`);
 						}
 
-						resolve(true);
-						return;
+						setTimeout(() => self.connect(), self.reconnectInterval);
+
+						resolve(false);
 					}
-				);
+
+					resolve(true);
+					return;
+				}
+			);
 
 			self._registerListeners();
 		});
